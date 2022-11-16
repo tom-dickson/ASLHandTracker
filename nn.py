@@ -4,12 +4,12 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
 import matplotlib.pyplot as plt
-import itertools
 
 
 '''
 Neural Network Model
 ...needs work :(
+66% accuracy? Good for 29 classes?
 '''
 
 
@@ -51,8 +51,6 @@ class Model(nn.Module):
         x = torch.sigmoid(x)
         return x
 
-
-
 batch_size = 64
 
 train_data = Data(X_train, y_train)
@@ -68,44 +66,46 @@ output_dim = 29
 model = Model(input_dim, hidden_dims, output_dim)
 
 lr = 0.1
-loss = nn.CrossEntropyLoss()
+criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=lr)
 
 num_epochs = 100
-loss_values = []
-
-for epoch in range(num_epochs):
-    for X, y in train_dataloader:
-        optimizer.zero_grad()
-       
-        pred = model(X)
-        l = loss(pred, y)
-        loss_values.append(l.data)
-        l.backward()
-        optimizer.step()
-        
-
-print("Training Complete")
-
-step = np.linspace(0, 100, 24300)
-
-fig, ax = plt.subplots(figsize=(8,5))
-plt.plot(step, np.array(loss_values))
-plt.title("Step-wise Loss")
-plt.xlabel("Epochs")
-plt.ylabel("Loss")
-plt.show()
 
 correct = 0
 total = 0
 
+iters, losses = [], []
+# training
+n = 0 # the number of iterations
+for epoch in range(num_epochs):
+    for xs, ts in train_dataloader:
+        if len(ts) != batch_size:
+            continue
+        # xs = xs.view(-1, 784) # flatten the image. The -1 is a wildcard
+        zs = model(xs)
+        loss = criterion(zs, ts) # compute the total loss
+        loss.backward() # compute updates for each parameter
+        optimizer.step() # make the updates for each parameter
+        optimizer.zero_grad() # a clean up step for PyTorch
+        # save the current training information
+        iters.append(n)
+        losses.append(float(loss)/batch_size) # compute *average* loss
+        # increment the iteration number
+        n += 1
+# plotting
+
+plt.title("Training Curve (batch_size={}, lr={})".format(batch_size, lr))
+plt.plot(iters, losses, label="Train")
+plt.xlabel("Iterations")
+plt.ylabel("Loss")
+plt.show()
+
+
 with torch.no_grad():
-    for X, y in test_dataloader:
-        outputs = model(X)
-        predicted = np.where(outputs < 0.5, 0, 1)
-        predicted = list(itertools.chain(*predicted))
-        total += y.size(0)
-        # correct += np.array([predicted == y.numpy()]).sum().item()
-        correct += 1 if predicted == y else 0 #what the fuck
+    for xs, ts in test_dataloader:
+        zs = model(xs)
+        pred = zs.max(1, keepdim=True)[1] # get the index of the max logit
+        correct += pred.eq(ts.view_as(pred)).sum().item()
+        total += int(ts.shape[0])
 
 print(f'Accuracy of the network on the {total} test instances: {100 * correct // total}%')
