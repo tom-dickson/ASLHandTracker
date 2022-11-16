@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 '''
 Neural Network Model
 ...needs work :(
-66% accuracy? Good for 29 classes?
+70% accuracy? Good for 29 classes?
 '''
 
 
@@ -18,7 +18,10 @@ labels = np.load('labels.npy') # 19436 labels
 data = np.load('data.npy')     # 19436 preprocessed images 
                                # of x,y,z at 21 landmarks a hand
 
-data = data.reshape(data.shape[0], 21*3)
+
+# dataNew = data[:, :, :2]
+data = data.reshape(data.shape[0], 21*3) # including z
+# data = dataNew.reshape(data.shape[0], 21*2) # not including z
 
 X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.2)
 
@@ -47,8 +50,10 @@ class Model(nn.Module):
         self.seq = nn.Sequential(*layer)
 
     def forward(self, x):
+        x = torch.flatten(x, 1)
         x = self.seq(x)
         x = torch.sigmoid(x)
+        # return nn.functional.softmax(x, dim=1)
         return x
 
 batch_size = 64
@@ -59,8 +64,9 @@ train_dataloader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle
 test_data = Data(X_test, y_test)
 test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
 
-input_dim = 21 * 3
-hidden_dims = [200, 100]
+input_dim = 21 * 3 # including z
+# input_dim = 21 * 2 # not including z
+hidden_dims = [int(264 * 1.5), 200]
 output_dim = 29
 
 model = Model(input_dim, hidden_dims, output_dim)
@@ -76,23 +82,21 @@ total = 0
 
 iters, losses = [], []
 # training
-n = 0 # the number of iterations
+n = 0 
 for epoch in range(num_epochs):
     for xs, ts in train_dataloader:
         if len(ts) != batch_size:
             continue
-        # xs = xs.view(-1, 784) # flatten the image. The -1 is a wildcard
+        
         zs = model(xs)
-        loss = criterion(zs, ts) # compute the total loss
-        loss.backward() # compute updates for each parameter
-        optimizer.step() # make the updates for each parameter
-        optimizer.zero_grad() # a clean up step for PyTorch
-        # save the current training information
+        loss = criterion(zs, ts)
+        loss.backward() 
+        optimizer.step() 
+        optimizer.zero_grad() 
+        
         iters.append(n)
-        losses.append(float(loss)/batch_size) # compute *average* loss
-        # increment the iteration number
+        losses.append(float(loss)/batch_size) 
         n += 1
-# plotting
 
 plt.title("Training Curve (batch_size={}, lr={})".format(batch_size, lr))
 plt.plot(iters, losses, label="Train")
@@ -104,7 +108,7 @@ plt.show()
 with torch.no_grad():
     for xs, ts in test_dataloader:
         zs = model(xs)
-        pred = zs.max(1, keepdim=True)[1] # get the index of the max logit
+        pred = zs.max(1, keepdim=True)[1] 
         correct += pred.eq(ts.view_as(pred)).sum().item()
         total += int(ts.shape[0])
 
