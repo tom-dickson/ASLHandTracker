@@ -140,7 +140,7 @@ translate = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N
 
 # model = train(model)
 
-#model = MLPC(hidden_layer_sizes=(100, 50, 20), batch_size=batch_size, max_iter=num_epochs)
+#model = MLPC(hidden_layer_sizes=(100, 70, 50, 20, 10), batch_size=batch_size, max_iter=num_epochs)
 # model = LR()
 model = GaussianMixture(len(translate))
 model.fit(data, labels)
