@@ -3,7 +3,13 @@ import cv2
 import time
 from sklearn.neural_network import MLPClassifier as MLPC
 import numpy as np
-from sklearn.model_selection import train_test_split
+
+'''
+This file was to try out something different, which was implemented in nn.py
+Also tried MLPClassifier from sklearn, but just don't get the same results
+
+Feel free to mess around here, its basically dead or we can delete it
+'''
 
 labels = np.load('labelsNew.npy') # 19436 labels
 data = np.load('dataNew.npy').astype(float)    # 19436 preprocessed images 
@@ -50,7 +56,7 @@ batch_size = 64
 lr = 0.15
 num_epochs = 200
 
-model = MLPC(hidden_layer_sizes=(100, 50), batch_size=batch_size, max_iter=num_epochs)
+model = MLPC(hidden_layer_sizes=(400, 200, 50), batch_size=batch_size, max_iter=num_epochs)
 model.fit(data, labels)
 score = model.score(data, labels)
 

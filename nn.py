@@ -7,9 +7,27 @@ import matplotlib.pyplot as plt
 from handDetector import handDetector as hd
 import cv2
 import time
-from sklearn.neural_network import MLPClassifier as MLPC
-from sklearn.linear_model import LogisticRegression as LR
-from sklearn.mixture import GaussianMixture
+
+'''
+File's a little messy, so here's whats going on.
+
+    - dataNew.npy is unprocessed, so I process it all using preprocess
+    - for some of the labels, there just isn't enough info on them
+        (like c or o) so those just become "nothing"
+        * scroll down to line 60 or so for new alphabet
+    - train test split up the info, saving 20% for testing
+    - creating the model (feel free to change around to see if it works better)
+    - giving the model its parameters (batch size, lr, ...)
+    - training and testing
+
+At the very bottom of the file is the hand detector using the webcam
+This one we can actually make into a separate file so that it can just be 
+    imported and ran
+But it should show the tracked hand and the letter it thinks it is
+
+Press 'Q' to quit
+
+'''
 
 labels = np.load('labelsNew.npy') # 19436 labels
 data = np.load('dataNew.npy').astype(float)    # 19436 preprocessed images 
@@ -35,6 +53,29 @@ for i in range(len(data)):
 data = data.reshape(data.shape[0], 21*3) # including z
 # data = dataNew.reshape(data.shape[0], 21*2) # not including z
 
+'''
+
+NEW ALPHABET
+
+doesn't include C, D, O, P, Q, del, space due to lack of data
+
+'''
+newTranslate = ["A", "B", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", 
+             "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "nothing"
+    ]
+
+removed = [2, 3, 14, 15, 16, 26, 28]
+
+for r in removed:
+    labels = np.where(labels == r, 27, labels)
+
+for i in range(2, 12):
+    labels = np.where(labels == i, i - 2, labels)
+
+for i in range(17, 26):
+    labels = np.where(labels == i, i - 5, labels)
+
+labels = np.where(labels == 27, 21, labels)
 
 X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.2)
 
@@ -71,13 +112,13 @@ class Model(nn.Module):
 
 batch_size = 64
 lr = 0.15
-num_epochs = 200
+num_epochs = 150
 
 input_dim = 21 * 3 # including z
 # input_dim = 21 * 2 # not including z
 # hidden_dims = [int(264 * 1.6), 200]
-hidden_dims = [100]
-output_dim = 29
+hidden_dims = [400, 200, 50]
+output_dim = len(newTranslate)
 model = Model(input_dim, hidden_dims, output_dim)
 
 train_data = Data(X_train, y_train)
@@ -129,6 +170,7 @@ def train(model, batch_size=64, num_epochs=100, criterion=criterion, optimizer=o
                 total += int(ts.shape[0])
 
         print(f'Accuracy of the network on the {total} test instances: {100 * correct // total}%')
+        input()
 
     return model
 
@@ -138,18 +180,18 @@ translate = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N
 
 
 
-# model = train(model)
+model = train(model)
 
 #model = MLPC(hidden_layer_sizes=(100, 70, 50, 20, 10), batch_size=batch_size, max_iter=num_epochs)
 # model = LR()
-model = GaussianMixture(len(translate))
-model.fit(data, labels)
-score = model.score(data, labels)
+# model = GaussianMixture(len(translate))
+# model.fit(data, labels)
+# score = model.score(data, labels)
 
-print('\n\n')
-print(f'{score=}')
-print('\n\n')
-input()
+# print('\n\n')
+# print(f'{score=}')
+# print('\n\n')
+# input()
 
 pTime = 0
 cTime = 0
@@ -170,14 +212,13 @@ while True:
             continue
         lmlist = lmlist.reshape(1, 21*3)
         # lmlist = lmlist[:, :2] # no z
-        # lmlist = torch.from_numpy(lmlist.astype(np.float32))
-        # zs = model(lmlist[None, :, :])
+        lmlist = torch.from_numpy(lmlist.astype(np.float32))
+        zs = model(lmlist[None, :, :])
         
-        # pred = zs.max(1, keepdim=True)[1] 
-        pred = model.predict(lmlist)[0]
+        pred = zs.max(1, keepdim=True)[1] 
+        # pred = model.predict(lmlist)[0]
         # pred = max(zs)
-        print(pred)
-        letter = translate[pred]
+        letter = newTranslate[pred]
     cTime = time.time()
     fps = int(1/(cTime-pTime))
     pTime = cTime
