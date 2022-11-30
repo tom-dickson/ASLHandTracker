@@ -64,18 +64,22 @@ newTranslate = ["A", "B", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N",
              "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "nothing"
     ]
 
+translate = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", 
+            "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "del", "nothing", "space"
+    ]
+
 removed = [2, 3, 14, 15, 16, 26, 28]
 
 for r in removed:
     labels = np.where(labels == r, 27, labels)
 
-for i in range(2, 12):
+for i in range(2, 14):
     labels = np.where(labels == i, i - 2, labels)
 
 for i in range(17, 26):
     labels = np.where(labels == i, i - 5, labels)
 
-labels = np.where(labels == 27, 21, labels)
+labels = np.where(labels == 27, len(newTranslate)-1, labels)
 
 X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.2)
 
@@ -116,9 +120,9 @@ num_epochs = 150
 
 input_dim = 21 * 3 # including z
 # input_dim = 21 * 2 # not including z
-# hidden_dims = [int(264 * 1.6), 200]
-hidden_dims = [400, 200, 50]
+hidden_dims = [500, 300, 100]
 output_dim = len(newTranslate)
+# output_dim = len(translate)
 model = Model(input_dim, hidden_dims, output_dim)
 
 train_data = Data(X_train, y_train)
@@ -170,13 +174,8 @@ def train(model, batch_size=64, num_epochs=100, criterion=criterion, optimizer=o
                 total += int(ts.shape[0])
 
         print(f'Accuracy of the network on the {total} test instances: {100 * correct // total}%')
-        input()
 
     return model
-
-translate = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", 
-            "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "del", "nothing", "space"
-    ]
 
 
 
@@ -206,11 +205,16 @@ while True:
     letter = "nothing"
     if lmlist:
         # lmlist = np.array(lmlist, dtype=float)
+        # lmlist = lmlist[:, :2]
+        
 
         lmlist = preprocess(np.array(lmlist, dtype=float))
-        if lmlist.shape != (21, 3):
+        # if lmlist.shape != (21, 2): #not including z
+        if lmlist.shape != (21, 3): #including z
             continue
-        lmlist = lmlist.reshape(1, 21*3)
+
+        lmlist = lmlist.reshape(1, 21*3) # including z
+        # lmlist = lmlist.reshape(1, 21*2) # not including z
         # lmlist = lmlist[:, :2] # no z
         lmlist = torch.from_numpy(lmlist.astype(np.float32))
         zs = model(lmlist[None, :, :])
@@ -219,6 +223,7 @@ while True:
         # pred = model.predict(lmlist)[0]
         # pred = max(zs)
         letter = newTranslate[pred]
+        # letter = translate[pred]
     cTime = time.time()
     fps = int(1/(cTime-pTime))
     pTime = cTime
